@@ -1,6 +1,8 @@
-var {ObjectID} = require('mongodb');
-var express = require('express');
-var bodyParser = require('body-parser');
+const _ = require('lodash');
+const {ObjectID} = require('mongodb');
+const express = require('express');
+const bodyParser = require('body-parser');
+
 var {mongoose} =  require('./db/mongoose');
 var {Todo} = require('./models/todo');
 var {User} = require('./models/user');
@@ -85,10 +87,35 @@ app.delete('/todos/:id', (req,res) => {
     res.status(400).send();
 
   });
-
-
-
 });
+
+//app.patch allows us to update items
+app.patch('/todos/:id', (req, res) => {
+  var id = req.params.id;
+  //_.pick allows the user to only be able to update once we have selected
+  var body = _.pick(req.body, ['text', 'completed']);
+  //if todo does not exist it sends error 404
+  if (!ObjectID.isValid(id)) {
+   return res.status(404).send();
+ }
+  //if body is completed and is a boolean
+  if ( _.isBoolean(body.completed) && body.completed) {
+    //date will be set for it
+    body.completedAt = new Date().getTime();
+  } else {
+    body.completed = false;
+    body.completedAt = null;
+  }
+  Todo.findByIdAndUpdate(id, {$set: body}, {new: true}).then((todo) => {
+    if (!todo) {
+      return res.status(404).send();
+    }
+    res.send({todo});
+  }).catch((e) => {
+    res.status(400).send();
+  })
+});
+
 
 app.listen(port,() => {
   console.log(`started up at port ${port}`);
